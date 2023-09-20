@@ -7,6 +7,7 @@ cd $DIR
 
 progname="speed-cam.py"
 speedconfig="config.py"
+cameraconfig="configcam.py"
 searchconfig="search_config.py"
 imagedir="media/images"
 searchdir="media/search"
@@ -18,7 +19,8 @@ searchconfig="$DIR/$searchconfig"
 
 filename_conf="work_config.txt"
 filename_temp="work_temp.txt"
-
+filename_camera="work_camera.txt"
+filename_camtemp="temp_camera.txt"
 #------------------------------------------------------------------------------
 function do_anykey ()
 {
@@ -176,6 +178,27 @@ function do_edit_save ()
 }
 
 #------------------------------------------------------------------------------
+function do_camedit_save ()
+{
+  if (whiptail --title "Save $var=$newvalue" --yesno "$comment\n $var=$newvalue   was $value" 8 65 --yes-button "Save" --no-button "Cancel" ) then
+    value=$newvalue
+
+    rm $filename_camera  # Initialize new conf file
+    while read camerafile ;  do
+      if echo "${camerafile}" | grep --quiet "${var}" ; then
+         echo "$var=$value         #$comment" >> $filename_camera
+      else
+         echo "$configfile" >> $filename_camera
+      fi
+    done < $camera_file
+    cp $filename_camera $camera_file
+  fi
+  rm $filename_camtemp
+  rm $filename_camera
+}
+
+#------------------------------------------------------------------------------
+
 function do_nano_main ()
 {
   cp $config_file $filename_conf
@@ -188,6 +211,20 @@ function do_nano_main ()
 }
 
 #------------------------------------------------------------------------------
+
+function do_nano_camera ()
+{
+  cp $camera_file $filename_camera
+  nano $filename_camera
+  if (whiptail --title "Save Nano Edits" --yesno "Save nano changes to $camera_file\n or cancel all changes" 0 0 \
+                                         --yes-button "Save" \
+                                         --no-button "Cancel" ); then
+    cp $filename_camera $camera_file
+  fi
+}
+
+#------------------------------------------------------------------------------
+
 function do_settings_menu ()
 {
   config_file=$speedconfig
@@ -216,6 +253,36 @@ function do_settings_menu ()
 }
 
 #------------------------------------------------------------------------------
+
+function do_camera_menu ()
+{
+  camera_file=$cameraconfig
+  SET_SEL=$( whiptail --title "Settings Menu" \
+                      --menu "Arrow/Enter Selects or Tab Key" 0 0 0 \
+                      --ok-button Select \
+                      --cancel-button Back \
+  "a EDIT" "nano $camera_file for camera editing" \
+  "b VIEW" "configcam.py for camera settings" \
+  "q BACK" "To Main Menu" 3>&1 1>&2 2>&3 )
+
+  RET=$?
+  if [ $RET -eq 1 ]; then
+    do_main_menu
+  elif [ $RET -eq 0 ]; then
+    case "$SET_SEL" in
+      a\ *) do_nano_camera
+            do_camera_menu ;;
+      b\ *) more -d configcam.py
+            do_anykey
+            do_camera_menu ;;
+      q\ *) do_main_menu ;;
+      *) whiptail --msgbox "Programmer error: un recognized option" 0 0 0 ;;
+    esac || whiptail --msgbox "There was an error running menu item $SET_SEL" 0 0 0
+  fi
+}
+
+#------------------------------------------------------------------------------
+
 function Filebrowser()
 {
 # first parameter is Menu Title
@@ -734,16 +801,17 @@ function do_main_menu ()
   "a $SPEED_1" "$SPEED_2" \
   "b $WEB_1" "$WEB_2" \
   "c SETTINGS" "Change speed_cam and webserver settings" \
-  "d PLUGINS" "Change plugins Settings" \
-  "e RCLONE" "Manage File Transfers to Remote Storage" \
-  "f HTML" "Make html pages from speed-cam.csv & jpgs" \
-  "g VIEW" "View speed-cam.csv File" \
-  "h SEARCH" "Images Search Menu (openCV Template Match)" \
-  "i UPGRADE" "Program Files from GitHub.com" \
-  "j STATUS" "CPU $temp   Select to Refresh" \
-  "k REPORTS" "Run Various sqlite3 Reports" \
-  "l HELP" "View Readme.md" \
-  "m ABOUT" "Information about this program" \
+  "d CAMERA SETTINGS" "Change camera settings" \
+  "e PLUGINS" "Change plugins Settings" \
+  "f RCLONE" "Manage File Transfers to Remote Storage" \
+  "g HTML" "Make html pages from speed-cam.csv & jpgs" \
+  "h VIEW" "View speed-cam.csv File" \
+  "i SEARCH" "Images Search Menu (openCV Template Match)" \
+  "j UPGRADE" "Program Files from GitHub.com" \
+  "k STATUS" "CPU $temp   Select to Refresh" \
+  "l REPORTS" "Run Various sqlite3 Reports" \
+  "m HELP" "View Readme.md" \
+  "n ABOUT" "Information about this program" \
   "q QUIT" "Exit This Program"  3>&1 1>&2 2>&3)
 
   RET=$?
@@ -754,24 +822,25 @@ function do_main_menu ()
       a\ *) do_speed_cam ;;
       b\ *) do_webserver ;;
       c\ *) do_settings_menu ;;
-      d\ *) do_plugins_menu ;;
-      e\ *) do_sync_menu
+      d\ *) do_camera_menu ;;
+      e\ *) do_plugins_menu ;;
+      f\ *) do_sync_menu
             do_main_menu ;;
-      f\ *) do_makehtml_menu ;;
-      g\ *) clear
+      g\ *) do_makehtml_menu ;;
+      h\ *) clear
             more ./speed-cam.csv
             do_anykey ;;
-      h\ *) do_speed_search_menu ;;
-      i\ *) clear
-            do_upgrade ;;
+      i\ *) do_speed_search_menu ;;
       j\ *) clear
+            do_upgrade ;;
+      k\ *) clear
             do_main_menu ;;
-      k\ *) do_report_menu ;;
-      l\ *) pandoc -f markdown -t plain  Readme.md | more -d
+      l\ *) do_report_menu ;;
+      m\ *) pandoc -f markdown -t plain  Readme.md | more -d
             do_anykey
             do_main_menu ;;
-      m\ *) do_about ;;
-      q\ *) rm -f $filename_conf $filename_temp
+      n\ *) do_about ;;
+      q\ *) rm -f $filename_conf $filename_temp $filename_camera $filename_camtemp
             clear
             exit 0 ;;
          *) whiptail --msgbox "Programmer error: unrecognised option" 20 60 1 ;;
