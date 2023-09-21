@@ -40,7 +40,7 @@ logging.getLogger('matplotlib.font_manager').disabled = True
 from config import DB_DIR
 from config import DB_NAME
 from config import DB_TABLE
-from config import SPEED_MPH
+from config import MO_SPEED_MPH_ON
 from config import GRAPH_PATH
 from config import GRAPH_ADD_DATE_TO_FILENAME   # Prefix graph image filename with datetime for uniqueness.
 from config import GRAPH_RUN_TIMER_HOURS
@@ -144,7 +144,7 @@ def get_speed_units_str():
     Convert config.py SPEED_MPH boolean to a string.
     '''
     speed_unit = 'kph'
-    if SPEED_MPH:
+    if MO_SPEED_MPH_ON:
         speed_unit  = 'mph'
     return speed_unit
 
